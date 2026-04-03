@@ -6,8 +6,17 @@
 //
 
 import Foundation
+import Observation
 
-struct Post: Identifiable, Hashable, Decodable {
+@Observable
+final class Post: Identifiable, Hashable, Decodable {
+    static func == (lhs: Post, rhs: Post) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
     
     let id: Int
     let userId: Int
@@ -27,7 +36,7 @@ struct Post: Identifiable, Hashable, Decodable {
         self.liked = liked
     }
 
-    init(from decoder: Decoder) throws {
+    required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(Int.self, forKey: .id)
         userId = try container.decode(Int.self, forKey: .userId)

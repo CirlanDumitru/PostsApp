@@ -12,19 +12,17 @@ struct PostsView: View {
     @State var viewModel: PostsViewModel
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if viewModel.state.isLoading {
-                    ProgressView(.postsStateLoading)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let error = viewModel.state.errorMessage {
-                    errorView(message: error)
-                } else {
-                    postsList
-                }
+        Group {
+            if viewModel.state.isLoading {
+                ProgressView(.postsStateLoading)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let error = viewModel.state.errorMessage {
+                errorView(message: error)
+            } else {
+                postsList
             }
-            .navigationTitle(.postsTitle)
         }
+        .navigationTitle(.postsTitle)
         .task {
             viewModel.send(.loadPosts)
         }
@@ -77,6 +75,8 @@ private struct PostRowView: View {
                     .lineLimit(2)
             }
             .padding(.vertical, 4)
+            Spacer()
+            Image(systemName: post.liked ? "heart.fill" : "heart")
         }
     }
 }

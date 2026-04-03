@@ -9,23 +9,21 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var coordinator = AppCoordinator()
+    @State private var postsViewModel = PostsViewModel()
 
     var body: some View {
         NavigationStack {
-            postsView
+            PostsView(viewModel: postsViewModel)
+                .onAppear {
+                    postsViewModel.onPostSelected = { post in
+                        coordinator.selectedPost = post
+                    }
+                }
                 .navigationDestination(item: $coordinator.selectedPost) { post in
                     PostDetailView(
                         viewModel: PostDetailViewModel(post: post)
                     )
                 }
         }
-    }
-
-    private var postsView: some View {
-        let vm = PostsViewModel()
-        vm.onPostSelected = { post in
-            coordinator.selectedPost = post
-        }
-        return PostsView(viewModel: vm)
     }
 }

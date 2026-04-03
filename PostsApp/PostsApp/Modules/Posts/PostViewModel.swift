@@ -30,6 +30,7 @@ final class PostsViewModel {
 
     private let apiClient: APIClientProtocol
     private let analytics: AnalyticsServiceProtocol
+    private let likeStore: LikeStoreProtocol
 
     // MARK: - Published State
 
@@ -42,9 +43,11 @@ final class PostsViewModel {
     // MARK: - Init
 
     init(apiClient: APIClientProtocol = APIClient.shared,
-         analytics: AnalyticsServiceProtocol = AnalyticsService.shared) {
+         analytics: AnalyticsServiceProtocol = AnalyticsService.shared,
+         likeStore: LikeStoreProtocol = LikeStore.shared) {
         self.apiClient = apiClient
         self.analytics = analytics
+        self.likeStore = likeStore
     }
 
     // MARK: - UDF Entry Point
@@ -61,6 +64,9 @@ final class PostsViewModel {
             Task {
                 do {
                     let posts = try await apiClient.fetchPosts()
+                    for post in posts {
+                        post.liked = likeStore.isLiked(postId: post.id)
+                    }
                     state.posts = posts
                 } catch {
                     state.errorMessage = error.localizedDescription
@@ -69,8 +75,6 @@ final class PostsViewModel {
             }
 
         case .selectPost(let post):
-            // ✅ Analytics: log post_selected with post_id and post_title
-            // post_title is NOT PII, so .string() is safe.
             analytics.logEvent(.postSelected, parameters: [
                 .postId:    .int(post.id),
                 .postTitle: .string(post.title)
