@@ -8,27 +8,6 @@
 import Foundation
 import CommonCrypto
 
-// MARK: - Analytics Events
-
-enum AnalyticsEvent {
-
-    // MARK: Posts Module
-    case postSelected
-    case postLiked
-
-    // MARK: Screen Navigation 
-    case screenView
-
-    // MARK: Internal name
-    var name: String {
-        switch self {
-        case .postSelected:    return "post_selected"
-        case .postLiked:       return "post_liked"
-        case .screenView:      return "screen_view"
-        }
-    }
-}
-
 // MARK: - Analytics Parameter Keys
 
 enum AnalyticsParameter: String {
@@ -37,6 +16,10 @@ enum AnalyticsParameter: String {
     case screenName  = "screen_name"
     case feature     = "feature"
     case value       = "value"
+
+    /// If `true`, this parameter must never be sent as cleartext `.string`.
+    /// Use `.hashed` or `.omit` instead.
+    var requiresHashedValue: Bool { false }
 }
 
 // MARK: - PII-Safe Value Wrapper
@@ -53,7 +36,7 @@ enum AnalyticsValue {
     /// Explicitly omit this value from the payload.
     case omit
 
-    var firebaseValue: Any? {
+    var rawValue: Any? {
         switch self {
         case .string(let v):  return v
         case .int(let v):     return v
@@ -61,6 +44,50 @@ enum AnalyticsValue {
         case .bool(let v):    return v
         case .hashed(let v):  return v.sha256Hash
         case .omit:           return nil
+        }
+    }
+}
+
+// MARK: - Analytics Events (typed payloads)
+
+enum AnalyticsEvent {
+
+    // MARK: Posts Module
+    case postSelected(postId: Int, postTitle: String)
+    case postLiked(postId: Int, postTitle: String)
+    case postUniked(postId: Int, postTitle: String)
+
+    // MARK: Screen Navigation
+    case screenView(screenName: String)
+
+    var name: String {
+        switch self {
+        case .postSelected: return "post_selected"
+        case .postLiked:    return "post_liked"
+        case .postUniked:    return "post_unliked"
+        case .screenView:   return "screen_view"
+        }
+    }
+
+    var parameters: [AnalyticsParameter: AnalyticsValue] {
+        switch self {
+        case .postSelected(let postId, let postTitle):
+            return [
+                .postId: .int(postId),
+                .postTitle: .string(postTitle)
+            ]
+            
+        case .postLiked(let postId, let postTitle),
+                .postUniked(let postId, let postTitle):
+            return [
+                .postId: .int(postId),
+                .postTitle: .string(postTitle)
+            ]
+            
+        case .screenView(let screenName):
+            return [
+                .screenName: .string(screenName)
+            ]
         }
     }
 }

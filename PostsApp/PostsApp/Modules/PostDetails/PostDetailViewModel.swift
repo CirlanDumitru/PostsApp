@@ -53,23 +53,16 @@ final class PostDetailViewModel {
         switch action {
 
         case .viewAppeared:
-            // ✅ Analytics: screen_view event on open
-            analytics.logEvent(.screenView, parameters: [
-                .screenName: .int(state.post.id)
-            ])
+            analytics.log(.screenView(screenName: "post_detail"))
 
         case .toggleLike:
             state.isLiked.toggle()
             state.post.liked = state.isLiked
             likeStore.setLiked(state.isLiked, postId: state.post.id)
-
-            if state.isLiked {
-                // ✅ Analytics: post_liked when user taps like
-                analytics.logEvent(.postLiked, parameters: [
-                    .postId:    .int(state.post.id),
-                    .postTitle: .string(state.post.title)
-                ])
-            }
+            
+            analytics.log(state .isLiked ?
+                .postLiked(postId: state.post.id, postTitle: state.post.title) :
+                    .postUniked(postId: state.post.id, postTitle: state.post.title))
         }
     }
 }

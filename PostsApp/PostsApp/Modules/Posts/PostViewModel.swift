@@ -75,10 +75,7 @@ final class PostsViewModel {
             }
 
         case .selectPost(let post):
-            analytics.logEvent(.postSelected, parameters: [
-                .postId:    .int(post.id),
-                .postTitle: .string(post.title)
-            ])
+            analytics.log(.postSelected(postId: post.id, postTitle: post.title))
             onPostSelected?(post)
         }
     }

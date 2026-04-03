@@ -6,13 +6,11 @@
 //
 
 import Foundation
-//import FirebaseAnalytics
 
 // MARK: - Protocol (enables mocking in tests)
 
 protocol AnalyticsServiceProtocol {
-    func logEvent(_ event: AnalyticsEvent,
-                  parameters: [AnalyticsParameter: AnalyticsValue])
+    func log(_ event: AnalyticsEvent)
 }
 
 // MARK: - Live Implementation
@@ -22,38 +20,54 @@ final class AnalyticsService: AnalyticsServiceProtocol {
     // Singleton for convenience; can be replaced by DI container.
     static let shared: AnalyticsServiceProtocol = AnalyticsService()
 
-    private init() {}
+    private let destinations: [AnalyticsDestination]
+    private let validator: AnalyticsValidator
 
-    /// Logs a strongly-typed event to Firebase Analytics.
-    /// PII values must be wrapped in `.hashed(_:)` or `.omit` at the call site.
-    func logEvent(_ event: AnalyticsEvent,
-                  parameters: [AnalyticsParameter: AnalyticsValue] = [:]) {
+    init(destinations: [AnalyticsDestination] = [DebugPrintAnalyticsDestination()],
+         validator: AnalyticsValidator = AnalyticsValidator()) {
+        self.destinations = destinations
+        self.validator = validator
+    }
 
-        var firebaseParams: [String: Any] = [:]
-
-        for (key, value) in parameters {
-            if let safeValue = value.firebaseValue {
-                firebaseParams[key.rawValue] = safeValue
-            }
-            // .omit values are silently dropped — never reach Firebase
-        }
-
-//        Analytics.logEvent(event.name, parameters: firebaseParams.isEmpty ? nil : firebaseParams)
-
+    func log(_ event: AnalyticsEvent) {
         #if DEBUG
-        print("[Analytics] \(event.name) → \(firebaseParams)")
+        let issues = validator.validate(eventName: event.name, parameters: event.parameters)
+        if !issues.isEmpty {
+            assertionFailure("""
+            Analytics validation failed for '\(event.name)':
+            \(issues.map(\.message).joined(separator: "\n"))
+            """)
+        }
         #endif
+
+        let renderedParams = Self.render(parameters: event.parameters)
+        for destination in destinations {
+            destination.log(eventName: event.name, parameters: renderedParams.isEmpty ? nil : renderedParams)
+        }
+    }
+
+    static func render(parameters: [AnalyticsParameter: AnalyticsValue]) -> [String: Any] {
+        var out: [String: Any] = [:]
+        out.reserveCapacity(parameters.count)
+        for (key, value) in parameters {
+            if let rendered = value.rawValue {
+                out[key.rawValue] = rendered
+            }
+        }
+        return out
     }
 }
 
 // MARK: - No-op Mock (for SwiftUI Previews / Unit Tests)
 
 final class MockAnalyticsService: AnalyticsServiceProtocol {
-    private(set) var loggedEvents: [(event: AnalyticsEvent, params: [AnalyticsParameter: AnalyticsValue])] = []
+    private(set) var loggedEvents: [(event: AnalyticsEvent, rendered: [String: Any])] = []
 
-    func logEvent(_ event: AnalyticsEvent,
-                  parameters: [AnalyticsParameter: AnalyticsValue] = [:]) {
-        loggedEvents.append((event, parameters))
-        print("[MockAnalytics] \(event.name) → \(parameters)")
+    func log(_ event: AnalyticsEvent) {
+        let rendered = AnalyticsService.render(parameters: event.parameters)
+        loggedEvents.append((event, rendered))
+        #if DEBUG
+        debugPrint("[MockAnalytics] \(event.name) → \(rendered)")
+        #endif
     }
 }
