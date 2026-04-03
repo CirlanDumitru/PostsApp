@@ -77,6 +77,7 @@ private struct PostRowView: View {
             .padding(.vertical, 4)
             Spacer()
             Image(systemName: post.liked ? "heart.fill" : "heart")
+                .foregroundStyle(post.liked ? .red : .secondary)
         }
     }
 }
